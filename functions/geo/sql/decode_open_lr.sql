@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION bqutils.string.decode_openlr(openLRString STRING)
+CREATE OR REPLACE FUNCTION bqutils.geo.decode_openlr(openLRString STRING)
 RETURNS JSON
 LANGUAGE js
 OPTIONS (
@@ -72,3 +72,27 @@ AS r"""
     };
   }
 """;
+
+CREATE OR REPLACE FUNCTION bqutils.geo.openlr_to_geography(openLRString STRING)
+RETURNS GEOGRAPHY
+OPTIONS (
+    description = """Decodes an OpenLR string and returns a GEOGRAPHY linestring.
+
+Example usage:
+  SELECT bqutils.geo.openlr_to_geography('CwNhbCU+jzPLAwD0/34zGw==') as geom;
+
+Returns a GEOGRAPHY linestring connecting all points in the decoded OpenLR location reference.
+If decoding fails, returns NULL."""
+)
+AS (
+  ST_MAKELINE(
+    ARRAY(
+      SELECT
+        ST_GEOGPOINT(
+          CAST(JSON_EXTRACT_SCALAR(point, '$.properties._longitude') AS FLOAT64),
+          CAST(JSON_EXTRACT_SCALAR(point, '$.properties._latitude') AS FLOAT64)
+        )
+      FROM UNNEST(JSON_EXTRACT_ARRAY(bqutils.geo.decode_openlr(openLRString), '$.properties._points.properties')) as point
+    )
+  )
+);
