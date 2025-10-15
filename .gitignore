@@ -1,3 +1,4 @@
 .envrc.customization
 generated/
 tags
+*.swp
